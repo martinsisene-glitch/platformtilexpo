@@ -1,0 +1,50 @@
+name: Deploy til GitHub Pages
+
+on:
+  push:
+    branches: [main]   # Kører automatisk når du pusher til main
+  workflow_dispatch:   # Kan også startes manuelt fra GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Hent kode
+        uses: actions/checkout@v4
+
+      - name: Opsæt Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer afhængigheder
+        run: npm install
+
+      - name: Byg app
+        run: npm run build
+
+      - name: Opsæt GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload build-output
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy til GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

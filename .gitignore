@@ -1,0 +1,33 @@
+# Dependencies — aldrig commit disse (de hentes via npm install)
+node_modules/
+
+# Build output — generes automatisk af GitHub Actions
+dist/
+
+# macOS system-filer
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor/IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Lokale env-filer
+.env
+.env.local
+.env.*.local
+
+# Claude Code
+.claude/
+
+# Runtime data — gemmes lokalt, ikke i repo
+UserData.JSON
+
+# Logs
+*.log
+npm-debug.log*

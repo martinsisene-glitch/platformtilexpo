@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explore Brabrand</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; height: 100vh; overflow: hidden; background: #f9fafb; }
+    #app { height: 100vh; display: flex; flex-direction: column; }
+    .screen { height: 100%; display: flex; flex-direction: column; padding: 24px; overflow-y: auto; }
+    .hidden { display: none !important; }
+
+    h1 { font-size: 2rem; text-transform: uppercase; }
+    h2 { font-size: 1.4rem; text-transform: uppercase; }
+
+    .border-bottom { border-bottom: 4px solid black; padding-bottom: 8px; margin-bottom: 16px; }
+
+    button { cursor: pointer; font-family: inherit; font-size: 1rem; }
+
+    .btn-primary {
+      width: 100%; background: #a3e635; border: 4px solid black;
+      border-radius: 999px; padding: 16px; font-size: 1.5rem;
+      text-transform: uppercase;
+    }
+    .btn-primary:hover { background: #84cc16; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-back {
+      background: none; border: none; font-size: 1.5rem; padding: 8px;
+      border-radius: 50%; width: 40px; height: 40px; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .btn-back:hover { background: #e5e7eb; }
+
+    .top-bar { display: flex; align-items: center; margin-bottom: 24px; gap: 12px; }
+    .top-bar h1 { flex: 1; }
+
+    /* Loading */
+    #screen-loading {
+      align-items: center; justify-content: center;
+      background: linear-gradient(to bottom, white, #eff6ff);
+    }
+    #screen-loading h1 { font-size: 3rem; text-align: center; border-bottom: 8px solid black; padding-bottom: 12px; margin-bottom: 32px; }
+    .loading-dots { font-size: 1.5rem; text-align: center; }
+
+    /* Home */
+    .route-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+    .route-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .route-circle { width: 72px; height: 72px; border-radius: 50%; border: 4px solid black; }
+    .route-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .route-btn span { font-size: 0.75rem; text-align: center; }
+
+    .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+    .badge { width: 72px; height: 72px; border-radius: 50%; border: 4px solid black; margin: auto; }
+    .badge.locked { opacity: 0.3; }
+
+    .podium { display: flex; justify-content: center; align-items: flex-end; gap: 8px; cursor: pointer; }
+    .podium-bar { display: flex; flex-direction: column; align-items: center; }
+    .podium-box { border: 4px solid black; display: flex; align-items: center; justify-content: center; width: 88px; }
+    .podium-number { background: #fde047; border-radius: 50%; border: 4px solid black; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+
+    /* RouteMap */
+    #map-canvas { flex: 1; background: white; border: 4px solid black; position: relative; margin-bottom: 16px; overflow: hidden; }
+    .map-water { position: absolute; left: 0; top: 0; width: 50%; height: 100%; background: linear-gradient(135deg, #67e8f9, #22d3ee); }
+    .map-land { position: absolute; right: 0; top: 0; width: 50%; height: 100%; background: #f3f4f6; }
+    .checkpoint-dot {
+      position: absolute; transform: translate(-50%, -50%);
+      width: 44px; height: 44px; border-radius: 50%; border: 4px solid black;
+      display: flex; align-items: center; justify-content: center;
+      background: #d1d5db; font-size: 0.9rem; cursor: pointer;
+    }
+    .checkpoint-dot.answered { background: #a3e635; }
+    .checkpoint-dot.start { background: #a3e635; cursor: default; font-size: 0.6rem; font-weight: bold; }
+    .checkpoint-dot.end { background: none; border: none; font-size: 2rem; cursor: default; }
+    .map-path { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    .progress-dots { display: flex; justify-content: center; gap: 12px; margin-top: 12px; }
+    .progress-dot { width: 36px; height: 36px; border-radius: 50%; border: 4px solid black; display: flex; align-items: center; justify-content: center; background: white; }
+    .progress-dot.done { background: #a3e635; }
+
+    /* Scanner */
+    #screen-scanner { padding: 0; }
+    .scanner-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; }
+    .scanner-viewfinder {
+      flex: 1; margin: 0 24px; border: 4px solid black; position: relative;
+      display: flex; align-items: center; justify-content: center; background: #1f2937;
+    }
+    .corner { position: absolute; width: 48px; height: 48px; border-color: #a3e635; border-style: solid; }
+    .corner.tl { top: 12px; left: 12px; border-width: 4px 0 0 4px; }
+    .corner.tr { top: 12px; right: 12px; border-width: 4px 4px 0 0; }
+    .corner.bl { bottom: 12px; left: 12px; border-width: 0 0 4px 4px; }
+    .corner.br { bottom: 12px; right: 12px; border-width: 0 4px 4px 0; }
+    .scanner-hint { color: #9ca3af; font-size: 1rem; text-align: center; }
+    .scanner-bottom { padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+    .btn-scan { background: #a3e635; border: 4px solid black; border-radius: 999px; padding: 20px; font-size: 2rem; text-transform: uppercase; }
+    .btn-scan:hover { background: #84cc16; }
+
+    /* Checkpoint */
+    .quiz-image { background: #4ade80; border: 4px solid black; padding: 32px; display: flex; justify-content: center; align-items: center; margin-bottom: 16px; }
+    .quiz-brand-box { background: #fde047; border: 4px solid black; width: 112px; height: 112px; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; }
+    .quiz-question { background: #fde047; border: 4px solid black; padding: 16px; margin-bottom: 16px; text-align: center; font-size: 1.1rem; text-transform: uppercase; font-weight: bold; }
+    .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .answer-btn { border: 4px solid black; padding: 20px; font-size: 1rem; background: white; text-align: center; }
+    .answer-btn:hover { background: #f3f4f6; }
+    .answer-btn.selected { background: #e5e7eb; }
+    .answer-btn.correct { background: #a3e635; }
+    .answer-btn.wrong { background: #fca5a5; }
+
+    /* Feedback */
+    #screen-feedback { align-items: center; justify-content: center; }
+    .feedback-emoji { font-size: 5rem; text-align: center; margin-bottom: 16px; }
+    .feedback-title { font-size: 2.5rem; text-transform: uppercase; border-bottom: 8px solid black; padding-bottom: 12px; margin-bottom: 12px; text-align: center; }
+    .feedback-fact { background: #f0fdf4; border: 4px solid black; padding: 16px; margin-bottom: 24px; }
+    .feedback-fact h3 { border-bottom: 4px solid black; padding-bottom: 8px; margin-bottom: 8px; }
+
+    /* Leaderboard */
+    .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 4px solid black; background: white; margin-bottom: 8px; }
+    .lb-row.me { background: #bef264; }
+    .lb-num { background: #fde047; border-radius: 50%; border: 4px solid black; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+    .lb-name { flex: 1; font-size: 1.1rem; }
+    .lb-score { font-size: 1.2rem; }
+
+    /* Completion */
+    #screen-completion { align-items: center; justify-content: center; background: linear-gradient(to bottom, white, #fefce8); }
+    .completion-title { font-size: 3rem; text-transform: uppercase; border-bottom: 8px solid black; padding-bottom: 12px; margin-bottom: 24px; text-align: center; }
+    .gift-box { background: #a3e635; border: 4px solid black; padding: 24px; margin-bottom: 24px; cursor: pointer; }
+    .gift-inner { width: 192px; height: 128px; border: 4px solid black; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    .gift-covered { background: repeating-linear-gradient(45deg, #86efac, #86efac 10px, #4ade80 10px, #4ade80 20px); }
+    .gift-revealed { background: #fde047; flex-direction: column; gap: 4px; }
+    .gift-revealed span { font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LOADING -->
+  <div id="screen-loading" class="screen">
+    <h1>EXPLORE<br>BRABRAND</h1>
+    <div class="loading-dots">HENTER INDHOLD<br>. . . .</div>
+  </div>
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen hidden">
+    <div class="top-bar">
+      <h1>VELKOMMEN BÆNER123!</h1>
+    </div>
+
+    <div class="border-bottom"><h2>TILGÆNGELIGE RUTER</h2></div>
+    <div class="route-grid">
+      <button class="route-btn" onclick="goTo('route')">
+        <div class="route-circle" style="background:#22d3ee"></div>
+        <span>Brabrand Søen</span>
+      </button>
+      <button class="route-btn" onclick="goTo('route')">
+        <div class="route-circle" style="background:#a3e635"></div>
+        <span>Sølyst</span>
+      </button>
+      <button class="route-btn" onclick="goTo('route')">
+        <div class="route-circle" style="background:#22c55e"></div>
+        <span>Hasle Bakker</span>
+      </button>
+      <button class="route-btn" disabled>
+        <div class="route-circle" style="background:#d1d5db"></div>
+        <span>Heste Dalen</span>
+      </button>
+    </div>
+
+    <div class="border-bottom"><h2>BADGES</h2></div>
+    <div class="badge-grid" style="margin-bottom:32px">
+      <div class="badge" style="background:linear-gradient(135deg,#a3e635,#22c55e)"></div>
+      <div class="badge" style="background:linear-gradient(135deg,#4ade80,#10b981)"></div>
+      <div class="badge locked" style="background:linear-gradient(135deg,#fde047,#a3e635)"></div>
+      <div class="badge" style="background:linear-gradient(135deg,#67e8f9,#60a5fa)"></div>
+    </div>
+
+    <div class="border-bottom"><h2>VENNERS AKTIVITET</h2></div>
+    <div class="podium" onclick="goTo('leaderboard')">
+      <div class="podium-bar">
+        <div class="podium-box" style="height:80px;background:#9ca3af">
+          <div class="podium-number">2</div>
+        </div>
+        <span style="margin-top:8px;font-size:0.85rem">Tapir</span>
+      </div>
+      <div class="podium-bar">
+        <div class="podium-box" style="height:112px;background:#22d3ee">
+          <div class="podium-number">1</div>
+        </div>
+        <span style="margin-top:8px;font-size:0.85rem">Elefant</span>
+      </div>
+      <div class="podium-bar">
+        <div class="podium-box" style="height:64px;background:#22d3ee">
+          <div class="podium-number">3</div>
+        </div>
+        <span style="margin-top:8px;font-size:0.85rem">Sølove</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="screen-leaderboard" class="screen hidden">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo('home')">←</button>
+      <h1>Leaderboard</h1>
+    </div>
+    <div class="border-bottom"><h2>DIN AKTIVITET & VENNER</h2></div>
+    <div id="lb-list"></div>
+    <div style="background:#cffafe;border:4px solid black;padding:16px;margin-top:16px;text-align:center">
+      Gennemfør flere ruter for at samle point og klatre på leaderboardet!
+    </div>
+  </div>
+
+  <!-- ROUTE MAP -->
+  <div id="screen-route" class="screen hidden">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo('home')">←</button>
+      <h1 style="font-size:1.2rem">Rute: Brabrandsøen</h1>
+    </div>
+    <div id="map-canvas">
+      <div class="map-water"></div>
+      <div class="map-land"></div>
+      <svg class="map-path" id="map-svg"></svg>
+      <div id="map-dots"></div>
+    </div>
+    <button class="btn-primary" onclick="startRoute()">START</button>
+    <div style="text-align:center;margin:12px 0;font-size:1rem;text-transform:uppercase">BESVARET</div>
+    <div class="progress-dots" id="progress-dots"></div>
+  </div>
+
+  <!-- SCANNER -->
+  <div id="screen-scanner" class="screen hidden" style="padding:0">
+    <div class="scanner-top">
+      <button class="btn-back" onclick="goTo('route')">←</button>
+      <span>CHECKPOINT <span id="scanner-cp-num"></span></span>
+      <span></span>
+    </div>
+    <div class="scanner-viewfinder">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="scanner-hint">Ret kameraet mod QR-koden</div>
+    </div>
+    <div class="scanner-bottom">
+      <button class="btn-scan" onclick="goTo('checkpoint')">SCAN</button>
+    </div>
+  </div>
+
+  <!-- CHECKPOINT / QUIZ -->
+  <div id="screen-checkpoint" class="screen hidden">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo('route')">←</button>
+      <h2 id="cp-title"></h2>
+    </div>
+    <div class="quiz-image">
+      <div class="quiz-brand-box" id="cp-brand"></div>
+    </div>
+    <div class="quiz-question" id="cp-question"></div>
+    <div class="answer-grid" id="cp-answers"></div>
+    <button class="btn-primary" id="cp-next" onclick="submitAnswer()" disabled>NÆSTE</button>
+  </div>
+
+  <!-- FEEDBACK -->
+  <div id="screen-feedback" class="screen hidden">
+    <div style="max-width:480px;width:100%;margin:auto;display:flex;flex-direction:column;gap:16px">
+      <div class="feedback-emoji" id="fb-emoji"></div>
+      <div class="feedback-title" id="fb-title"></div>
+      <p id="fb-subtitle" style="text-align:center;font-size:1.2rem"></p>
+      <div class="feedback-fact hidden" id="fb-fact">
+        <h3>BÆREDYGTIGHEDSFAKTA</h3>
+        <p id="fb-fact-text"></p>
+      </div>
+      <button class="btn-primary" onclick="continueFeedback()">FORTSÆT</button>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div id="screen-completion" class="screen hidden">
+    <div style="max-width:480px;width:100%;margin:auto;display:flex;flex-direction:column;align-items:center;gap:16px">
+      <div class="completion-title">TILLYKKE!</div>
+      <p style="font-size:1.3rem;text-align:center">DU HAR GENNEMFØRT RUTEN</p>
+      <p style="font-size:1.1rem">KLIK FOR AT HENTE DIN BELØNNING</p>
+      <div class="gift-box" onclick="revealGift()">
+        <div class="gift-inner gift-covered" id="gift-inner"></div>
+      </div>
+      <button class="btn-primary hidden" id="btn-home" onclick="resetAndGoHome()">TILBAGE TIL FORSIDEN</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const checkpoints = [
+    { title: 'CHECKPOINT 1', brand: 'MC', question: 'HVOR LANG TID TAGER DET AT NEDBRYDES?', answers: ['1-2 uger','3-4 uger','3-4 måneder','5-6 måneder'], correct: 2 },
+    { title: 'CHECKPOINT 2', brand: 'SB', question: 'HVOR MANGE TRÆER ER DER OMKRING SØEN?', answers: ['100-200','200-500','500-1000','1000+'], correct: 3 },
+    { title: 'CHECKPOINT 3', brand: 'BK', question: 'HVAD ER SØENS LÆNGDE?', answers: ['2 km','3,5 km','5 km','7 km'], correct: 1 },
+    { title: 'CHECKPOINT 4', brand: 'SW', question: 'HVOR DYBT ER SØEN PÅ DET DYBESTE STED?', answers: ['1-2 meter','3-4 meter','5-6 meter','7-8 meter'], correct: 1 },
+    { title: 'CHECKPOINT 5', brand: 'KFC', question: 'HVOR MANGE FUGLEARTER LEVER VED SØEN?', answers: ['50-100','100-150','150-200','200+'], correct: 3 },
+  ];
+
+  const facts = [
+    'Brabrand Sø er hjem for over 200 fuglearter og et vigtigt økosystem for biodiversitet.',
+    'At gå i stedet for at køre reducerer CO2-udledning med ca. 0,9 kg pr. kilometer.',
+    'Danmark sigter mod at reducere drivhusgasudledning med 70% inden 2030.',
+    'Grønne byrum som Brabrand Sø hjælper med at filtrere luftforurening.',
+    'Hjemmehørende planter kræver mindre vand og giver bedre levesteder for lokalt dyreliv.',
+  ];
+
+  const players = [
+    { name: 'Elefant', score: 1420, pos: 1, me: false },
+    { name: 'Tapir',   score: 1100, pos: 2, me: false },
+    { name: 'Bæner123',score: 950,  pos: 3, me: true  },
+    { name: 'Sølove',  score: 850,  pos: 4, me: false },
+    { name: 'Tiger',   score: 720,  pos: 5, me: false },
+    { name: 'Panda',   score: 680,  pos: 6, me: false },
+  ];
+
+  const mapPoints = [
+    { x: 15, y: 85, type: 'start' },
+    { x: 25, y: 65, cp: 1 },
+    { x: 35, y: 50, cp: 2 },
+    { x: 50, y: 40, cp: 3 },
+    { x: 65, y: 28, cp: 4 },
+    { x: 80, y: 15, cp: 5 },
+    { x: 90, y: 8,  type: 'end' },
+  ];
+
+  let currentCheckpoint = 1;
+  let answeredCheckpoints = [];
+  let selectedAnswer = null;
+  let lastCorrect = false;
+  let giftRevealed = false;
+
+  function goTo(screen) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById('screen-' + screen).classList.remove('hidden');
+    if (screen === 'route') renderMap();
+    if (screen === 'leaderboard') renderLeaderboard();
+    if (screen === 'checkpoint') renderCheckpoint();
+    if (screen === 'scanner') document.getElementById('scanner-cp-num').textContent = currentCheckpoint;
+  }
+
+  function startRoute() {
+    const next = getNextCheckpoint();
+    if (next) { currentCheckpoint = next; goTo('scanner'); }
+  }
+
+  function getNextCheckpoint() {
+    for (let i = 1; i <= 5; i++) {
+      if (!answeredCheckpoints.includes(i)) return i;
+    }
+    return null;
+  }
+
+  function renderMap() {
+    const svg = document.getElementById('map-svg');
+    const container = document.getElementById('map-dots');
+    svg.innerHTML = '';
+    container.innerHTML = '';
+
+    // Draw path lines
+    for (let i = 0; i < mapPoints.length - 1; i++) {
+      const a = mapPoints[i], b = mapPoints[i+1];
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', a.x + '%'); line.setAttribute('y1', a.y + '%');
+      line.setAttribute('x2', b.x + '%'); line.setAttribute('y2', b.y + '%');
+      line.setAttribute('stroke','black'); line.setAttribute('stroke-width','3');
+      line.setAttribute('stroke-dasharray','10,5');
+      svg.appendChild(line);
+    }
+
+    // Draw dots
+    mapPoints.forEach(pt => {
+      const dot = document.createElement('div');
+      dot.className = 'checkpoint-dot';
+      dot.style.left = pt.x + '%';
+      dot.style.top = pt.y + '%';
+      if (pt.type === 'start') {
+        dot.classList.add('start');
+        dot.textContent = 'START';
+      } else if (pt.type === 'end') {
+        dot.classList.add('end');
+        dot.textContent = '⭐';
+      } else {
+        if (answeredCheckpoints.includes(pt.cp)) dot.classList.add('answered');
+        dot.textContent = pt.cp;
+        dot.onclick = () => { currentCheckpoint = pt.cp; goTo('scanner'); };
+      }
+      container.appendChild(dot);
+    });
+
+    // Progress dots
+    const pd = document.getElementById('progress-dots');
+    pd.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const d = document.createElement('div');
+      d.className = 'progress-dot' + (answeredCheckpoints.includes(i) ? ' done' : '');
+      d.textContent = answeredCheckpoints.includes(i) ? '✓' : '';
+      pd.appendChild(d);
+    }
+  }
+
+  function renderLeaderboard() {
+    const list = document.getElementById('lb-list');
+    list.innerHTML = players.map(p => `
+      <div class="lb-row ${p.me ? 'me' : ''}">
+        <div class="lb-num">${p.pos}</div>
+        <div class="lb-name">${p.name}${p.me ? ' <small>(Dig)</small>' : ''}</div>
+        <div class="lb-score">${p.score} pts</div>
+      </div>
+    `).join('');
+  }
+
+  function renderCheckpoint() {
+    selectedAnswer = null;
+    const cp = checkpoints[currentCheckpoint - 1];
+    document.getElementById('cp-title').textContent = cp.title;
+    document.getElementById('cp-brand').textContent = cp.brand;
+    document.getElementById('cp-question').textContent = cp.question;
+    document.getElementById('cp-next').disabled = true;
+
+    const grid = document.getElementById('cp-answers');
+    grid.innerHTML = cp.answers.map((a, i) => `
+      <button class="answer-btn" id="ans-${i}" onclick="selectAnswer(${i})">${a}</button>
+    `).join('');
+  }
+
+  function selectAnswer(i) {
+    selectedAnswer = i;
+    document.querySelectorAll('.answer-btn').forEach((b, idx) => {
+      b.className = 'answer-btn' + (idx === i ? ' selected' : '');
+    });
+    document.getElementById('cp-next').disabled = false;
+  }
+
+  function submitAnswer() {
+    if (selectedAnswer === null) return;
+    const cp = checkpoints[currentCheckpoint - 1];
+    lastCorrect = selectedAnswer === cp.correct;
+
+    document.querySelectorAll('.answer-btn').forEach((b, i) => {
+      if (i === cp.correct) b.className = 'answer-btn correct';
+      else if (i === selectedAnswer) b.className = 'answer-btn wrong';
+    });
+    document.getElementById('cp-next').disabled = true;
+
+    setTimeout(() => {
+      showFeedback();
+    }, 600);
+  }
+
+  function showFeedback() {
+    document.getElementById('fb-emoji').textContent = lastCorrect ? '🎉' : '🌱';
+    document.getElementById('fb-title').textContent = lastCorrect ? 'RIGTIGT!' : 'NÆSTEN!';
+    document.getElementById('fb-subtitle').textContent = lastCorrect ? 'DU SVAREDE KORREKT' : 'IKKE HELT RIGTIGT';
+
+    const factEl = document.getElementById('fb-fact');
+    if (!lastCorrect) {
+      factEl.classList.remove('hidden');
+      document.getElementById('fb-fact-text').textContent = facts[Math.floor(Math.random() * facts.length)];
+    } else {
+      factEl.classList.add('hidden');
+    }
+    goTo('feedback');
+  }
+
+  function continueFeedback() {
+    if (!answeredCheckpoints.includes(currentCheckpoint)) {
+      answeredCheckpoints.push(currentCheckpoint);
+    }
+    if (answeredCheckpoints.length >= 5) {
+      goTo('completion');
+    } else {
+      goTo('route');
+    }
+  }
+
+  function revealGift() {
+    if (giftRevealed) return;
+    giftRevealed = true;
+    const inner = document.getElementById('gift-inner');
+    inner.className = 'gift-inner gift-revealed';
+    inner.innerHTML = '<span style="font-size:2.5rem">🎁</span><span>50% RABAT PÅ KAFFE!</span>';
+    document.getElementById('btn-home').classList.remove('hidden');
+  }
+
+  function resetAndGoHome() {
+    answeredCheckpoints = [];
+    currentCheckpoint = 1;
+    selectedAnswer = null;
+    giftRevealed = false;
+    goTo('home');
+  }
+
+  // Auto-navigate from loading
+  setTimeout(() => goTo('home'), 2000);
+</script>
+</body>
+</html>
